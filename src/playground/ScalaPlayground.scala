@@ -8,3 +8,6 @@ object ScalaPlayground extends App{
   println(array(0))
 
 }
+
+class Foo
+class Bar
