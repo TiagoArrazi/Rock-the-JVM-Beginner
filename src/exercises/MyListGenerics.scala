@@ -17,9 +17,10 @@ abstract class MyListGenerics[+A] {
   // polymorphic call
   override def toString: String = s"[$printElements]"
 
-  def map[B](transformer: MyTransformer[A, B]): MyListGenerics[B]
-  def flatMap[B](transformer: MyTransformer[A, MyListGenerics[B]]): MyListGenerics[B]
-  def filter(predicate: MyPredicate[A]): MyListGenerics[A]
+  // higher-order functions
+  def map[B](transformer: A => B): MyListGenerics[B]
+  def flatMap[B](transformer: A => MyListGenerics[B]): MyListGenerics[B]
+  def filter(predicate: A => Boolean): MyListGenerics[A]
 
   // concatenation
   def ++[B >: A](list: MyListGenerics[B]): MyListGenerics[B]
@@ -32,9 +33,9 @@ case object EmptyGenerics extends MyListGenerics[Nothing] {
   def add[B >: Nothing](element: B): MyListGenerics[B] = ConsGenerics(element, EmptyGenerics)
   def printElements: String = ""
 
-  def map[B](transformer: MyTransformer[Nothing, B]): MyListGenerics[B] = EmptyGenerics
-  def flatMap[B](transformer: MyTransformer[Nothing, MyListGenerics[B]]): MyListGenerics[B] = EmptyGenerics
-  def filter(predicate: MyPredicate[Nothing]): MyListGenerics[Nothing] = EmptyGenerics
+  def map[B](transformer: Nothing => B): MyListGenerics[B] = EmptyGenerics
+  def flatMap[B](transformer: Nothing => MyListGenerics[B]): MyListGenerics[B] = EmptyGenerics
+  def filter(predicate: Nothing => Boolean): MyListGenerics[Nothing] = EmptyGenerics
 
   def ++[B >: Nothing](list: MyListGenerics[B]): MyListGenerics[B] = list
 }
@@ -55,8 +56,8 @@ case class ConsGenerics[+A](h: A, t: MyListGenerics[A]) extends MyListGenerics[A
     = new ConsGenerics(2, Empty.filter(n % 2 == 0))
     = new ConsGenerics(2, Empty)
    */
-  def filter(predicate: MyPredicate[A]): MyListGenerics[A] =
-    if (predicate.test(h)) ConsGenerics(h, t.filter(predicate))
+  def filter(predicate: A => Boolean): MyListGenerics[A] =
+    if (predicate(h)) ConsGenerics(h, t.filter(predicate))
     else t.filter(predicate)
 
   /*
@@ -66,8 +67,8 @@ case class ConsGenerics[+A](h: A, t: MyListGenerics[A]) extends MyListGenerics[A
     = new ConsGenerics(2, new ConsGenerics(4, new ConsGenerics(6, Empty.map(n * 2))))
     = new ConsGenerics(2, new ConsGenerics(4, new ConsGenerics(6, Empty)))
    */
-  def map[B](transformer: MyTransformer[A, B]): MyListGenerics[B] =
-    ConsGenerics(transformer.transform(h), t.map(transformer))
+  def map[B](transformer: A => B): MyListGenerics[B] =
+    ConsGenerics(transformer(h), t.map(transformer))
 
   /*
   [1,2] ++ [3,4,5]
@@ -84,16 +85,8 @@ case class ConsGenerics[+A](h: A, t: MyListGenerics[A]) extends MyListGenerics[A
    = [1,2] ++ [2,3] ++ EmptyGenerics
    = [1,2,2,3]
    */
-  def flatMap[B](transformer: MyTransformer[A, MyListGenerics[B]]): MyListGenerics[B] =
-    transformer.transform(h) ++ t.flatMap(transformer)
-}
-
-trait MyPredicate[-T] {
-  def test(element: T): Boolean
-}
-
-trait MyTransformer[-A, B] {
-  def transform(element: A): B
+  def flatMap[B](transformer: A => MyListGenerics[B]): MyListGenerics[B] =
+    transformer(h) ++ t.flatMap(transformer)
 }
 
 object ListTestGenerics extends App {
@@ -105,28 +98,26 @@ object ListTestGenerics extends App {
   println(listOfIntegers.toString)
   println(listOfStrings.toString)
 
-  println(listOfIntegers.map((element: Int) => element * 2).toString)
+  // _ is equivalent to element => element
+  println(listOfIntegers.map(_ * 2).toString)
 
   // equivalent to
 
   //  println(listOfIntegers.map(new MyTransformer[Int, Int] {
-  //    override def transform(element: Int): Int = element * 2
+  //    override def apply(element: Int): Int = element * 2
   //  }).toString)
 
-  println(listOfIntegers.filter((element: Int) => element % 2 == 0).toString)
+  println(listOfIntegers.filter(_ % 2 == 0).toString)
 
   // equivalent to
 
   //  println(listOfIntegers.filter(new MyPredicate[Int] {
-  //    override def test(element: Int): Boolean = element % 2 == 0
+  //    override def apply(element: Int): Boolean = element % 2 == 0
   //  }).toString)
 
   println((listOfIntegers ++ anotherListOfIntegers).toString)
 
-  println(listOfIntegers.flatMap(new MyTransformer[Int, MyListGenerics[Int]] {
-    override def transform(element: Int): MyListGenerics[Int] =
-      new ConsGenerics[Int](element, ConsGenerics(element + 1, EmptyGenerics))
-  }).toString)
+  println(listOfIntegers.flatMap(element => new ConsGenerics[Int](element, ConsGenerics(element + 1, EmptyGenerics))).toString)
 
   println(cloneListOfIntegers == listOfIntegers)
 }
