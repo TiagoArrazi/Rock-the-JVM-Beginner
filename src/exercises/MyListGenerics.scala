@@ -21,6 +21,10 @@ abstract class MyListGenerics[+A] {
   def map[B](transformer: A => B): MyListGenerics[B]
   def flatMap[B](transformer: A => MyListGenerics[B]): MyListGenerics[B]
   def filter(predicate: A => Boolean): MyListGenerics[A]
+  def foreach(sideEffect: A => Unit): Unit
+//  def sort(): Nothing = ???
+  def zipWith[B >: A](list: MyListGenerics[B], f: (A, B) => B): MyListGenerics[B]
+//  def fold[B](start: Int)(f: (A, A) => B): MyListGenerics[B]
 
   // concatenation
   def ++[B >: A](list: MyListGenerics[B]): MyListGenerics[B]
@@ -33,9 +37,13 @@ case object EmptyGenerics extends MyListGenerics[Nothing] {
   def add[B >: Nothing](element: B): MyListGenerics[B] = ConsGenerics(element, EmptyGenerics)
   def printElements: String = ""
 
-  def map[B](transformer: Nothing => B): MyListGenerics[B] = EmptyGenerics
-  def flatMap[B](transformer: Nothing => MyListGenerics[B]): MyListGenerics[B] = EmptyGenerics
-  def filter(predicate: Nothing => Boolean): MyListGenerics[Nothing] = EmptyGenerics
+  override def map[B](transformer: Nothing => B): MyListGenerics[B] = EmptyGenerics
+  override def flatMap[B](transformer: Nothing => MyListGenerics[B]): MyListGenerics[B] = EmptyGenerics
+  override def filter(predicate: Nothing => Boolean): MyListGenerics[Nothing] = EmptyGenerics
+  override def foreach(sideEffect: Nothing => Unit): Unit = EmptyGenerics
+//  override def sort() = ???
+  override def zipWith[B >: Nothing](list: MyListGenerics[B], f: (Nothing, B) => B): MyListGenerics[B] = EmptyGenerics
+//  override def fold[B](start: Int)(f: (Nothing, Nothing) => B): MyListGenerics[B] = EmptyGenerics
 
   def ++[B >: Nothing](list: MyListGenerics[B]): MyListGenerics[B] = list
 }
@@ -74,6 +82,9 @@ case class ConsGenerics[+A](h: A, t: MyListGenerics[A]) extends MyListGenerics[A
   [1,2] ++ [3,4,5]
     = new ConsGenerics(1, [2] ++ [3,4,5])
     = new ConsGenerics(1, new ConsGenerics(2, Empty ++ [3,4,5]))
+    .
+    .
+    .
     = new ConsGenerics(1, new ConsGenerics(2, new ConsGenerics(3, new ConsGenerics(4, new ConsGenerics(5)))))
    */
   def ++[B >: A](list: MyListGenerics[B]): MyListGenerics[B] = ConsGenerics(h, t ++ list)
@@ -87,6 +98,17 @@ case class ConsGenerics[+A](h: A, t: MyListGenerics[A]) extends MyListGenerics[A
    */
   def flatMap[B](transformer: A => MyListGenerics[B]): MyListGenerics[B] =
     transformer(h) ++ t.flatMap(transformer)
+
+  def foreach(sideEffect: A => Unit): Unit =
+    if (t.isEmpty) sideEffect(h)
+    else {
+      sideEffect(h)
+      t.foreach(sideEffect)
+    }
+
+  def zipWith[B >: A](list: MyListGenerics[B], f: (A, B) => B): MyListGenerics[B] =
+    ConsGenerics(f(h, list.head), zipWith(list.tail, f))
+
 }
 
 object ListTestGenerics extends App {
@@ -95,11 +117,10 @@ object ListTestGenerics extends App {
   val anotherListOfIntegers: MyListGenerics[Int] = new ConsGenerics[Int](4, new ConsGenerics[Int](5, EmptyGenerics))
   val listOfStrings: MyListGenerics[String] = new ConsGenerics[String]("Hello", new ConsGenerics[String]("Scala", EmptyGenerics))
 
-  println(listOfIntegers.toString)
-  println(listOfStrings.toString)
+  // println(listOfIntegers.toString)
+  // println(listOfStrings.toString)
 
-  // _ is equivalent to element => element
-  println(listOfIntegers.map(_ * 2).toString)
+  // println(listOfIntegers.map(element => element * 2).toString)
 
   // equivalent to
 
@@ -107,7 +128,7 @@ object ListTestGenerics extends App {
   //    override def apply(element: Int): Int = element * 2
   //  }).toString)
 
-  println(listOfIntegers.filter(_ % 2 == 0).toString)
+  // println(listOfIntegers.filter(element => element % 2 == 0).toString)
 
   // equivalent to
 
@@ -115,9 +136,12 @@ object ListTestGenerics extends App {
   //    override def apply(element: Int): Boolean = element % 2 == 0
   //  }).toString)
 
-  println((listOfIntegers ++ anotherListOfIntegers).toString)
+  // println((listOfIntegers ++ anotherListOfIntegers).toString)
 
-  println(listOfIntegers.flatMap(element => new ConsGenerics[Int](element, ConsGenerics(element + 1, EmptyGenerics))).toString)
+  // println(listOfIntegers.flatMap(element => new ConsGenerics[Int](element, ConsGenerics(element + 1, EmptyGenerics))).toString)
 
-  println(cloneListOfIntegers == listOfIntegers)
+  // println(cloneListOfIntegers == listOfIntegers)
+
+  listOfIntegers.foreach(x => println(x))
+  println(listOfIntegers.zipWith(listOfIntegers, (x: Int, y: Int) => x * y))
 }
