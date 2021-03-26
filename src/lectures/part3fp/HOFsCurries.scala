@@ -68,4 +68,14 @@ object HOFsCurries extends App {
       andThen(f,g) => x => g(f(x))
 
    */
+
+  // 3.
+  def compose(f: Int => Int)(g: Int => Int) = (x: Int) => f(g(x))
+  def andThen(f: Int => Int)(g: Int => Int) = (x: Int) => g(f(x))
+
+  val plusOneTimesTwoComposer = compose(x => x * 2)(x => x + 1)
+  println(plusOneTimesTwoComposer(1))
+
+  val plusTwoAndThenTimesThree = andThen(x => x + 2)(x => x * 3)
+  println(plusTwoAndThenTimesThree(2))
 }
