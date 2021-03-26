@@ -22,9 +22,9 @@ abstract class MyListGenerics[+A] {
   def flatMap[B](transformer: A => MyListGenerics[B]): MyListGenerics[B]
   def filter(predicate: A => Boolean): MyListGenerics[A]
   def foreach(sideEffect: A => Unit): Unit
-//  def sort(): Nothing = ???
+  def sort(): Nothing = ???
   def zipWith[B >: A](list: MyListGenerics[B], f: (A, B) => B): MyListGenerics[B]
-//  def fold[B](start: Int)(f: (A, A) => B): MyListGenerics[B]
+  def fold[B](start: Int)(f: (A, A) => B): MyListGenerics[B]
 
   // concatenation
   def ++[B >: A](list: MyListGenerics[B]): MyListGenerics[B]
@@ -41,9 +41,9 @@ case object EmptyGenerics extends MyListGenerics[Nothing] {
   override def flatMap[B](transformer: Nothing => MyListGenerics[B]): MyListGenerics[B] = EmptyGenerics
   override def filter(predicate: Nothing => Boolean): MyListGenerics[Nothing] = EmptyGenerics
   override def foreach(sideEffect: Nothing => Unit): Unit = EmptyGenerics
-//  override def sort() = ???
+  override def sort(): Nothing = ???
   override def zipWith[B >: Nothing](list: MyListGenerics[B], f: (Nothing, B) => B): MyListGenerics[B] = EmptyGenerics
-//  override def fold[B](start: Int)(f: (Nothing, Nothing) => B): MyListGenerics[B] = EmptyGenerics
+  override def fold[B](start: Int)(f: (Nothing, Nothing) => B): MyListGenerics[B] = EmptyGenerics
 
   def ++[B >: Nothing](list: MyListGenerics[B]): MyListGenerics[B] = list
 }
@@ -106,8 +106,14 @@ case class ConsGenerics[+A](h: A, t: MyListGenerics[A]) extends MyListGenerics[A
       t.foreach(sideEffect)
     }
 
+  override def sort(): Nothing = ???
+
   def zipWith[B >: A](list: MyListGenerics[B], f: (A, B) => B): MyListGenerics[B] =
-    ConsGenerics(f(h, list.head), zipWith(list.tail, f))
+    ConsGenerics(f(h, list.head), t.zipWith(list.tail, f))
+
+
+  def fold[B](start: Int)(f: (A, A) => B): MyListGenerics[B] = ???
+
 
 }
 
@@ -144,4 +150,5 @@ object ListTestGenerics extends App {
 
   listOfIntegers.foreach(x => println(x))
   println(listOfIntegers.zipWith(listOfIntegers, (x: Int, y: Int) => x * y))
+  println(listOfIntegers.fold(0)((x: Int, y: Int) => x + y))
 }
