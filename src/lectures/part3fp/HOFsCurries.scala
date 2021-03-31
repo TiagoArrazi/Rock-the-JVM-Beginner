@@ -69,13 +69,23 @@ object HOFsCurries extends App {
 
    */
 
-  // 3.
-  def compose(f: Int => Int)(g: Int => Int) = (x: Int) => f(g(x))
-  def andThen(f: Int => Int)(g: Int => Int) = (x: Int) => g(f(x))
+  // 2.
+  def toCurry(f:(Int, Int) => Int): Int => Int => Int =
+    x => y => f(x, y)
 
-  val plusOneTimesTwoComposer = compose(x => x * 2)(x => x + 1)
+  def fromCurry(f: Int => Int => Int): (Int, Int) => Int =
+    (x, y) => f(x)(y)
+
+  // 3.
+  def compose[A,B,T](f: A => B)(g: T => A): T => B =
+    x => f(g(x))
+
+  def andThen[A,B,C](f: A => B)(g: B => C): A => C =
+    x => g(f(x))
+
+  val plusOneTimesTwoComposer = compose[Int, Int, Int](x => x * 2)(x => x + 1)
   println(plusOneTimesTwoComposer(1))
 
-  val plusTwoAndThenTimesThree = andThen(x => x + 2)(x => x * 3)
+  val plusTwoAndThenTimesThree = andThen[Int, Int, Int](x => x + 2)(x => x * 3)
   println(plusTwoAndThenTimesThree(2))
 }
