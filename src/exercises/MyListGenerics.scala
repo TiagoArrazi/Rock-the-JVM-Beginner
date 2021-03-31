@@ -21,10 +21,10 @@ abstract class MyListGenerics[+A] {
   def map[B](transformer: A => B): MyListGenerics[B]
   def flatMap[B](transformer: A => MyListGenerics[B]): MyListGenerics[B]
   def filter(predicate: A => Boolean): MyListGenerics[A]
-  def foreach(sideEffect: A => Unit): Unit
-  def sort(): Nothing = ???
-  def zipWith[B >: A](list: MyListGenerics[B], f: (A, B) => B): MyListGenerics[B]
-  def fold[B](start: Int)(f: (A, A) => B): MyListGenerics[B]
+  def foreach(f: A => Unit): Unit
+  def sort(compare: (A, A) => Int): MyListGenerics[A]
+  def zipWith[B, C](list: MyListGenerics[B], f: (A, B) => C): MyListGenerics[C]
+  def fold[B](start: B)(f: (B, A) => B): B
 
   // concatenation
   def ++[B >: A](list: MyListGenerics[B]): MyListGenerics[B]
@@ -40,10 +40,13 @@ case object EmptyGenerics extends MyListGenerics[Nothing] {
   override def map[B](transformer: Nothing => B): MyListGenerics[B] = EmptyGenerics
   override def flatMap[B](transformer: Nothing => MyListGenerics[B]): MyListGenerics[B] = EmptyGenerics
   override def filter(predicate: Nothing => Boolean): MyListGenerics[Nothing] = EmptyGenerics
-  override def foreach(sideEffect: Nothing => Unit): Unit = EmptyGenerics
-  override def sort(): Nothing = ???
-  override def zipWith[B >: Nothing](list: MyListGenerics[B], f: (Nothing, B) => B): MyListGenerics[B] = EmptyGenerics
-  override def fold[B](start: Int)(f: (Nothing, Nothing) => B): MyListGenerics[B] = EmptyGenerics
+  override def foreach(f: Nothing => Unit): Unit = ()
+  override def sort(compare: (Nothing, Nothing) => Int): EmptyGenerics.type = EmptyGenerics
+  override def zipWith[B, C](list: MyListGenerics[B], f: (Nothing, B) => C): MyListGenerics[C] =
+    if (!list.isEmpty) throw new RuntimeException("Lists do not have the same length")
+    else EmptyGenerics
+
+  override def fold[B](start: B)(f: (B, Nothing) => B): B = start
 
   def ++[B >: Nothing](list: MyListGenerics[B]): MyListGenerics[B] = list
 }
@@ -99,20 +102,37 @@ case class ConsGenerics[+A](h: A, t: MyListGenerics[A]) extends MyListGenerics[A
   def flatMap[B](transformer: A => MyListGenerics[B]): MyListGenerics[B] =
     transformer(h) ++ t.flatMap(transformer)
 
-  def foreach(sideEffect: A => Unit): Unit =
-    if (t.isEmpty) sideEffect(h)
-    else {
-      sideEffect(h)
-      t.foreach(sideEffect)
+  // HOFs
+  override def foreach(f: A => Unit): Unit = {
+    f(h)
+    t.foreach(f)
+  }
+
+  override def sort(compare: (A, A) => Int): MyListGenerics[A] = {
+
+    def insert(x: A, sortedList: MyListGenerics[A]): MyListGenerics[A] = {
+      if (sortedList.isEmpty) ConsGenerics(x, EmptyGenerics)
+      else if (compare(x, sortedList.head) < 0) ConsGenerics(x, sortedList)
+      else ConsGenerics(sortedList.head, insert(x, sortedList.tail))
     }
 
-  override def sort(): Nothing = ???
+    val sortedTail = t.sort(compare)
+    insert(h, sortedTail)
+  }
 
-  def zipWith[B >: A](list: MyListGenerics[B], f: (A, B) => B): MyListGenerics[B] =
+  def zipWith[B, C](list: MyListGenerics[B], f: (A, B) => C): MyListGenerics[C] = {
+    if (list.isEmpty) throw new RuntimeException("Lists do not have the same length")
     ConsGenerics(f(h, list.head), t.zipWith(list.tail, f))
-
-
-  def fold[B](start: Int)(f: (A, A) => B): MyListGenerics[B] = ???
+  }
+  /*
+  [1,2,3].fold(0)(+)
+    = [2,3].fold(1)(+)
+    = [3].fold(3)(+)
+    = [].fold(6)(+)
+    = 6
+   */
+  def fold[B](start: B)(f: (B, A) => B): B =
+    t.fold(f(start, h))(f)
 
 
 }
@@ -148,7 +168,8 @@ object ListTestGenerics extends App {
 
   // println(cloneListOfIntegers == listOfIntegers)
 
-  listOfIntegers.foreach(x => println(x))
+  listOfIntegers.foreach(println)
   println(listOfIntegers.zipWith(listOfIntegers, (x: Int, y: Int) => x * y))
-  println(listOfIntegers.fold(0)((x: Int, y: Int) => x + y))
+  println(listOfIntegers.sort((x, y) => y - x))
+  println(listOfIntegers.fold(0)(_ + _))
 }
