@@ -172,4 +172,11 @@ object ListTestGenerics extends App {
   println(listOfIntegers.zipWith(listOfIntegers, (x: Int, y: Int) => x * y))
   println(listOfIntegers.sort((x, y) => y - x))
   println(listOfIntegers.fold(0)(_ + _))
+
+  // for comprehension
+  val combinations = for {
+    n <- listOfIntegers
+    string <- listOfStrings
+  } yield n + "-" + string
+  println(combinations)
 }
